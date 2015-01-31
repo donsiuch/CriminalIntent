@@ -1,9 +1,15 @@
 package com.example.donnie.criminalintent;
 
+import android.annotation.TargetApi;
 import android.content.Intent;
+import android.os.Build;
 import android.support.v4.app.ListFragment;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -23,6 +29,9 @@ public class CrimeListFragment extends ListFragment {
     private static final String TAG = "CrimeListFragment";
 
     private ArrayList<Crime> mCrimes;
+
+    // id: zzz
+    private boolean mSubtitleVisible;
 
     private class CrimeAdapter extends ArrayAdapter<Crime> {
         public CrimeAdapter(ArrayList<Crime> crimes){
@@ -56,6 +65,11 @@ public class CrimeListFragment extends ListFragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // This is required to let the fragment manager know that once the hosting activity
+        // has received a callback message to its OnCreateOptionsMenu, that this fragment
+        // needs to receive options menu callbacks.
+        setHasOptionsMenu(true);
+
         // A fragment convenience method that returns the hosting activity.
         // It is used here to set the title on the action bar.
         getActivity().setTitle(R.string.crimes_title);
@@ -69,6 +83,12 @@ public class CrimeListFragment extends ListFragment {
 
         // A convenience method that you can use to set the adapter of the implicit ListView managed by CrimeListFragment
         setListAdapter(adapter);
+
+        // id: zzz
+        // This allows information (in our case the interface's subtitle) to be saved during
+        // device rotation.
+        setRetainInstance(true);
+        mSubtitleVisible = false; // Used to specify if the subtitle is showing.
     }
 
     @Override
@@ -88,5 +108,60 @@ public class CrimeListFragment extends ListFragment {
     public void onResume(){
         super.onResume();
         ((CrimeAdapter)getListAdapter()).notifyDataSetChanged();
+    }
+
+    /**
+     * The fragment manager calls this method once the hosting activity receives a its
+     * OnCreateOptionsMenu callback from the OS. I must explicitly tell the fragment manager
+     * that my fragment should receive a call to this method.
+     *
+     * @param menu
+     * @param inflater
+     */
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater){
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_crime_list, menu);
+        MenuItem showSubtitle = menu.findItem(R.id.menu_item_show_subtitle);
+        if (mSubtitleVisible && showSubtitle != null){
+            showSubtitle.setTitle(R.string.hide_subtitle);
+        }
+    }
+
+    // When the user presses an item in the option menu, the fragment receives a callback to this
+    // method.
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        switch (item.getItemId()){
+            case R.id.menu_item_new_crime:
+                Crime crime = new Crime();
+                CrimeLab.get(getActivity()).addCrime(crime);
+                Intent i = new Intent(getActivity(), CrimePagerActivity.class);
+                i.putExtra(CrimeFragment.EXTRA_CRIME_ID, crime.getId());
+                startActivityForResult(i, 0);
+                return true;
+            case R.id.menu_item_show_subtitle:
+                if (getActivity().getActionBar().getSubtitle() == null) {
+                    getActivity().getActionBar().setSubtitle(R.string.subtitle);
+                    mSubtitleVisible = true;
+                } else {
+                    getActivity().getActionBar().setSubtitle(null);
+                    item.setTitle(R.string.show_subtitle);
+                    mSubtitleVisible = false;
+                }
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState){
+        View v = super.onCreateView(inflater, parent, savedInstanceState);
+
+        if (mSubtitleVisible){
+            getActivity().getActionBar().setSubtitle(R.string.subtitle);
+        }
+        return v;
     }
 }
